@@ -1,0 +1,449 @@
+apiVersion: v1
+items:
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      description: Defines how to build the application
+      openshift.io/generated-by: OpenShiftNewApp
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: nodejs-mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4995901"
+    selfLink: /apis/build.openshift.io/v1/namespaces/branson1-us-ibm-com-templates/buildconfigs/nodejs-mongodb
+    uid: 9fea1696-fdcb-46ce-afd2-e2992b8acc08
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: nodejs-mongodb:latest
+    postCommit:
+      script: npm test
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: https://github.com/sclorg/nodejs-ex.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+        - name: NPM_MIRROR
+          value: https://registry.npmjs.org
+        from:
+          kind: ImageStreamTag
+          name: nodejs:latest
+          namespace: openshift
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - imageChange:
+        lastTriggeredImageID: image-registry.openshift-image-registry.svc:5000/openshift/nodejs@sha256:87be8d1bf03ef6cf2d050ff86ea1798a6a40f0bf238d1d8b7eadb5f45530de36
+      type: ImageChange
+    - type: ConfigChange
+    - github:
+        secret: lC3xGJPpLyt7l7qar75IoUHrhkvqg2Q4FPEP4D5T
+      type: GitHub
+    - generic:
+        secret: afUb3XgjSJfRUeo8qOXpyEGghOBFjge4UMIVrObI
+      type: Generic
+  status:
+    lastVersion: 1
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      description: Keeps track of changes in the application image
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    generation: 1
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: nodejs-mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4996170"
+    selfLink: /apis/image.openshift.io/v1/namespaces/branson1-us-ibm-com-templates/imagestreams/nodejs-mongodb
+    uid: 6f2457f4-bd34-42ac-81c0-f9ea0efda056
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: image-registry.openshift-image-registry.svc:5000/branson1-us-ibm-com-templates/nodejs-mongodb
+    tags:
+    - items:
+      - created: "2020-10-20T16:08:36Z"
+        dockerImageReference: image-registry.openshift-image-registry.svc:5000/branson1-us-ibm-com-templates/nodejs-mongodb@sha256:3a096c64bcd164dde1f3919f338dd8a6c2042c5c96df043ebe40fdd617e32bb2
+        generation: 1
+        image: sha256:3a096c64bcd164dde1f3919f338dd8a6c2042c5c96df043ebe40fdd617e32bb2
+      tag: latest
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the database
+      openshift.io/generated-by: OpenShiftNewApp
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: "2020-10-20T16:07:50Z"
+    generation: 2
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4996033"
+    selfLink: /apis/apps.openshift.io/v1/namespaces/branson1-us-ibm-com-templates/deploymentconfigs/mongodb
+    uid: 8cfc444b-3d37-4e42-b5e4-3bb16552047a
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      name: mongodb
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          name: mongodb
+        name: mongodb
+      spec:
+        containers:
+        - env:
+          - name: MONGODB_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: nodejs-mongodb
+          - name: MONGODB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: nodejs-mongodb
+          - name: MONGODB_DATABASE
+            value: marksdb
+          - name: MONGODB_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-admin-password
+                name: nodejs-mongodb
+          image: image-registry.openshift-image-registry.svc:5000/openshift/mongodb@sha256:d42c5a02ef850417ba09f857fef77668509fe60a1c45c6a134575c81207436e5
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 27017
+            timeoutSeconds: 1
+          name: mongodb
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - mongo 127.0.0.1:27017/$MONGODB_DATABASE -u $MONGODB_USER -p $MONGODB_PASSWORD
+                --eval="quit()"
+            failureThreshold: 3
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/mongodb/data
+            name: mongodb-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: mongodb-data
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - mongodb
+        from:
+          kind: ImageStreamTag
+          name: mongodb:3.6
+          namespace: openshift
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/openshift/mongodb@sha256:d42c5a02ef850417ba09f857fef77668509fe60a1c45c6a134575c81207436e5
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2020-10-20T16:08:02Z"
+      lastUpdateTime: "2020-10-20T16:08:02Z"
+      message: Deployment config has minimum availability.
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2020-10-20T16:08:03Z"
+      lastUpdateTime: "2020-10-20T16:08:03Z"
+      message: replication controller "mongodb-1" successfully rolled out
+      reason: NewReplicationControllerAvailable
+      status: "True"
+      type: Progressing
+    details:
+      causes:
+      - type: ConfigChange
+      message: config change
+    latestVersion: 1
+    observedGeneration: 2
+    readyReplicas: 1
+    replicas: 1
+    unavailableReplicas: 0
+    updatedReplicas: 1
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the application server
+      openshift.io/generated-by: OpenShiftNewApp
+      template.alpha.openshift.io/wait-for-ready: "true"
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    generation: 2
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: nodejs-mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4996306"
+    selfLink: /apis/apps.openshift.io/v1/namespaces/branson1-us-ibm-com-templates/deploymentconfigs/nodejs-mongodb
+    uid: 890f552a-502c-4a67-beaa-070f190345c9
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      name: nodejs-mongodb
+    strategy:
+      activeDeadlineSeconds: 21600
+      recreateParams:
+        timeoutSeconds: 600
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          name: nodejs-mongodb
+        name: nodejs-mongodb
+      spec:
+        containers:
+        - env:
+          - name: DATABASE_SERVICE_NAME
+            value: mongodb
+          - name: MONGODB_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: nodejs-mongodb
+          - name: MONGODB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: nodejs-mongodb
+          - name: MONGODB_DATABASE
+            value: marksdb
+          - name: MONGODB_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-admin-password
+                name: nodejs-mongodb
+          image: image-registry.openshift-image-registry.svc:5000/branson1-us-ibm-com-templates/nodejs-mongodb@sha256:3a096c64bcd164dde1f3919f338dd8a6c2042c5c96df043ebe40fdd617e32bb2
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          name: nodejs-mongodb
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - nodejs-mongodb
+        from:
+          kind: ImageStreamTag
+          name: nodejs-mongodb:latest
+          namespace: branson1-us-ibm-com-templates
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/branson1-us-ibm-com-templates/nodejs-mongodb@sha256:3a096c64bcd164dde1f3919f338dd8a6c2042c5c96df043ebe40fdd617e32bb2
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2020-10-20T16:08:53Z"
+      lastUpdateTime: "2020-10-20T16:08:53Z"
+      message: Deployment config has minimum availability.
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2020-10-20T16:08:53Z"
+      lastUpdateTime: "2020-10-20T16:08:53Z"
+      message: replication controller "nodejs-mongodb-1" successfully rolled out
+      reason: NewReplicationControllerAvailable
+      status: "True"
+      type: Progressing
+    details:
+      causes:
+      - type: ConfigChange
+      message: config change
+    latestVersion: 1
+    observedGeneration: 2
+    readyReplicas: 1
+    replicas: 1
+    unavailableReplicas: 0
+    updatedReplicas: 1
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes the database server
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4995899"
+    selfLink: /api/v1/namespaces/branson1-us-ibm-com-templates/services/mongodb
+    uid: 788102b1-00cf-4a64-8b2c-02401d9d323a
+  spec:
+    clusterIP: 172.21.103.208
+    ports:
+    - name: mongodb
+      port: 27017
+      protocol: TCP
+      targetPort: 27017
+    selector:
+      name: mongodb
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+      openshift.io/generated-by: OpenShiftNewApp
+      service.alpha.openshift.io/dependencies: '[{"name": "mongodb", "kind": "Service"}]'
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: nodejs-mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "4995889"
+    selfLink: /api/v1/namespaces/branson1-us-ibm-com-templates/services/nodejs-mongodb
+    uid: 3b87dc61-8a6b-4cdc-a3ed-de2e413f42db
+  spec:
+    clusterIP: 172.21.46.24
+    ports:
+    - name: web
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: nodejs-mongodb
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2020-10-20T16:07:49Z"
+    labels:
+      app: nodejs-mongodb
+      template: nodejs-mongodb
+    name: nodejs-mongodb
+    namespace: branson1-us-ibm-com-templates
+    resourceVersion: "5007209"
+    selfLink: /apis/route.openshift.io/v1/namespaces/branson1-us-ibm-com-templates/routes/nodejs-mongodb
+    uid: 01d6eece-7f4a-400c-9a0c-6d7ea7860bd6
+  spec:
+    host: nodejs-mongodb-branson1-us-ibm-com-templates.ose-internal-1602064171-f72ef11f3ab089a8c677044eb28292cd-0000.sjc03.containers.appdomain.cloud
+    port:
+      targetPort: web
+    tls:
+      termination: edge
+    to:
+      kind: Service
+      name: nodejs-mongodb
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: "2020-10-20T16:07:49Z"
+        status: "True"
+        type: Admitted
+      host: nodejs-mongodb-branson1-us-ibm-com-templates.ose-internal-1602064171-f72ef11f3ab089a8c677044eb28292cd-0000.sjc03.containers.appdomain.cloud
+      routerCanonicalHostname: ose-internal-1602064171-f72ef11f3ab089a8c677044eb28292cd-0000.sjc03.containers.appdomain.cloud
+      routerName: default
+      wildcardPolicy: None
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
